@@ -23,6 +23,16 @@ spec:
           subPath: config.json
         - name: zot-storage
           mountPath: /tmp/zot
+      - name: sidecar
+        image: busybox
+        command: ["sleep", "infinity"]
+        lifecycle:
+          postStart:
+            exec:
+              command: ["sh", "-c", "wget https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 -O /bin/jq && chmod a+x /bin/jq"]
+        volumeMounts:
+        - name: zot-storage
+          mountPath: /tmp/zot
       volumes:
       - name: zot-config-volume
         configMap:
