@@ -207,7 +207,8 @@ func (r *Reconciler) reconcileExists(ctx context.Context, configuration *v1alpha
 			return ctrl.Result{}, fmt.Errorf("failed to create TGZ from path: %w", err)
 		}
 
-		repositoryName, err := ociartifact.CreateRepositoryName(combinedDigest)
+		// TODO: Only for demo purposes
+		repositoryName, err := ociartifact.CreateRepositoryName("my-demo-name")
 		if err != nil {
 			status.MarkNotReady(r.EventRecorder, configuration, v1alpha1.CreateOCIRepositoryNameFailedReason, err.Error())
 
@@ -225,6 +226,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, configuration *v1alpha
 		//  Things to consider:
 		//   - HelmRelease (FluxCD) requires the OCI artifact to have the same tag as the helm chart itself
 		//     - But how to get the helm chart version? (User input, parse from content)
+		// TODO: Only for demo purposes
 		tag := "6.7.1"
 		manifestDigest, err := repository.PushArtifact(ctx, tag, dataTGZ)
 		if err != nil {

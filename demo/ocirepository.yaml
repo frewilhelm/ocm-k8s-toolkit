@@ -9,7 +9,7 @@ spec:
   layerSelector:
     mediaType: "application/vnd.oci.image.layer.v1.tar+gzip"
     operation: copy
-  url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/sha-2902983687364732866
+  url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/sha-2744483177395971398
   ref:
     tag: "6.7.1"
 ---
