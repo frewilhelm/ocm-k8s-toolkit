@@ -1,0 +1,104 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-podinfo
+spec:
+  # kro uses this simple schema to create your CRD schema and apply it
+  # The schema defines what users can provide when they instantiate the RGD (create an instance).
+  schema:
+    apiVersion: v1alpha1
+    kind: OCMDeployment
+    spec:
+      name: string
+      # Spec fields that users can provide.
+      ocmrepository:
+        name: string
+        baseUrl: string
+        type: string
+      component:
+        name: string
+        component: string
+        semver: string
+      resource:
+        name: string
+        byReference:
+          name: string
+      deployer:
+        flux:
+          ociRepository:
+            used: boolean | default=false
+            name: string
+          helmRelease: boolean | default=false
+          kustomization: boolean | default=false
+
+  # Define the resources this API will manage.
+  resources:
+    - id: ocmrepository
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: OCMRepository
+        metadata:
+          name: ${schema.spec.ocmrepository.name}
+        spec:
+          repositorySpec:
+            baseUrl: ${schema.spec.ocmrepository.baseUrl}
+            type: ${schema.spec.ocmrepository.type}
+          interval: 10m
+    - id: component
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Component
+        metadata:
+          name: ${schema.spec.component.name}
+        spec:
+          component: ${schema.spec.component.component}
+          repositoryRef:
+              name: ${schema.spec.ocmrepository.name}
+              namespace: default
+          semver: ${schema.spec.component.semver}
+          interval: 10m
+    - id: ocmresource # resource is reserved by kro
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: ${schema.spec.resource.name}
+        spec:
+          componentRef:
+            name: ${component.metadata.name}
+          resource:
+            byReference:
+              resource:
+                name: ${schema.spec.resource.byReference.name}
+          interval: 10m
+    - id: ocirepository
+      includeWhen:
+        - ${schema.spec.deployer.flux.ociRepository.used}
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: helm-podinfo
+        spec:
+          interval: 1m0s
+          layerSelector:
+              mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+              operation: copy
+          url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/${ocmresource.status.ociArtifact.repository}
+          ref:
+            digest: ${ocmresource.status.ociArtifact.digest}
+    - id: helmrelease
+      includeWhen:
+        - ${schema.spec.deployer.flux.helmRelease}
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: helm-podinfo
+        spec:
+          interval: 1m
+          timeout: 5m
+          chartRef:
+            kind: OCIRepository
+            name: ${schema.spec.deployer.flux.ociRepository.name}
+            namespace: default

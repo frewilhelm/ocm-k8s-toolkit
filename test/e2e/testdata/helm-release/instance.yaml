@@ -1,0 +1,24 @@
+apiVersion: kro.run/v1alpha1
+kind: OCMDeployment
+metadata:
+  name: podinfo-instance
+spec:
+  name: podinfo-instance-spec
+  ocmrepository:
+    name: helm-ocmrepository
+    baseUrl: http://registry-internal.default.svc.cluster.local:5001
+    type: OCIRegistry
+  component:
+    name: helm-component
+    component: test-registry.com/test-org/test-component
+    semver: v1.0.0
+  resource:
+    name: helm-resource
+    byReference:
+      name: helm-resource
+  deployer:
+    flux:
+      ociRepository:
+        used: true
+        name: helm-podinfo
+      helmRelease: true
