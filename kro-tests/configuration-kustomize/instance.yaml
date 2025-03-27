@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: ConfigurationKustomizeDeployment
+metadata:
+  name: configuration-kustomize-deployment
+spec:
+  kustomizePatch: |
+    - op: add
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: PODINFO_UI_MESSAGE
+          value: "Hello from the configuration"
+        - name: PODINFO_UI_COLOR
+          value: "#ff2d00"

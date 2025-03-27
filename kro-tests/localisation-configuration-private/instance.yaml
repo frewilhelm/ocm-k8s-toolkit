@@ -1,0 +1,17 @@
+apiVersion: kro.run/v1alpha1
+kind: ComplicatedDeployment
+metadata:
+  name: podinfo-completed-1
+spec:
+  podinfo:
+    message: "Boy, this is complicated!"
+    releaseName: "complicated-podinfo-1"
+---
+apiVersion: kro.run/v1alpha1
+kind: ComplicatedDeployment
+metadata:
+  name: podinfo-completed-2
+spec:
+  podinfo:
+    message: "Is it though?"
+    releaseName: "complicated-podinfo-2"

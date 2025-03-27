@@ -341,6 +341,7 @@ func (r *Reconciler) reconcileComponent(ctx context.Context, octx ocmctx.Context
 	}
 
 	ociArtifact := v1alpha1.OCIArtifactInfo{
+		Registry:   r.Registry.Reference.Registry,
 		Repository: ociRepositoryName,
 		Digest:     manifestDigest.String(),
 		Blob: &v1alpha1.BlobInfo{

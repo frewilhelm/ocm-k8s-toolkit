@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-signature
+data:
+  #          # dw - secret is a only a local public key for test purposes
+  acme-sig: "LS0tLS1CRUdJTiBSU0EgUFVCTElDIEtFWS0tLS0tCk1JSUJDZ0tDQVFFQTB2R0F4N3VqZ3BFdFBucXl0NnQxc3orMTNRZ05YYUhHV0dsbkdZMDQzT1dIZHk1TGt0eDEKWEZiRnlzOWl6VTN3TlFCR3NUZ0ZhaFkyK0hDMkNsRjJXaU5XSSsvakhQZ2RjRkhDQTJuYlVJVm1xYVpLekF0YgpYNWpxYVVaMmIwd2ptRmlnYXZmWnk2YnlvSGdKcUtqdURxNzFTTDV5YlF0cHpkNzhVQUdacUt1dHR0aFpyTnd3CkdPREttV1dadUlldnhhSVAzem5OVzZ0UkRCdTlqY0QvTDFkWHhlcHVXWklGOUpyakVDUDlENHNBamJsaFNpdlQKQ2haQjJJdE5FNjUxNGxKT0VoTXJJT2ozOE4rTkg3UzBMVjNDR2lBOUJUbEtUdlFuelcxVHd1d3BHd2lDTWN2ZApMYXZDS092blNPbTgxOWFQcEd0RWExSnpCM0Y3YU9URGd3SURBUUFCCi0tLS0tRU5EIFJTQSBQVUJMSUMgS0VZLS0tLS0K"
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: OCMRepository
+metadata:
+  name: static-repository-name
+spec:
+  repositorySpec:
+    #baseUrl: http://registry-internal.default.svc.cluster.local:5001
+    baseUrl: http://localhost:31000
+    type: OCIRegistry
+  interval: 10m
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Component
+metadata:
+  name: static-component-name
+spec:
+  component: test-registry.com/test-org/test-component
+  verify:
+    - signature: acme-sig
+      secretRef:
+        name: secret-signature
+  repositoryRef:
+    name: static-repository-name
+    namespace: default
+  semver: 1.0.0
+  interval: 10m
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: static-resource-rgd-name
+spec:
+  componentRef:
+    name: static-component-name # should be referenced/passed
+  resource:
+    byReference:
+      resource:
+        name: kro-rgd
+  interval: 10m
+---
+apiVersion: delivery.ocm.software/v1alpha1
+kind: OCMDeployer
+metadata:
+  name: static-ocmdeployer-name
+spec:
+  resourceRef:
+    name: static-resource-rgd-name # should be referenced/passed
+  interval: 10m

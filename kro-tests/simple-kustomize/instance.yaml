@@ -1,0 +1,4 @@
+apiVersion: kro.run/v1alpha1
+kind: SimpleKustomizeDeployment
+metadata:
+  name: simple-kustomize-deployment

@@ -265,6 +265,7 @@ func (r *Reconciler) reconcileExists(ctx context.Context, configuration *v1alpha
 
 		// We use the combinedDigest calculated above for the blob-info combinedDigest, so we can compare for any changes
 		configuration.Status.OCIArtifact = &v1alpha1.OCIArtifactInfo{
+			Registry:   r.Registry.Reference.Registry,
 			Repository: repositoryName,
 			Digest:     manifestDigest.String(),
 			Blob: &v1alpha1.BlobInfo{

@@ -1,0 +1,89 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: configure-kustomize-deployment
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: ConfigurationKustomizeDeployment
+    spec:
+      kustomizePatch: string
+  resources:
+    - id: ocmrepository
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: OCMRepository
+        metadata:
+          name: kustomize-ocmrepository-config
+        spec:
+          repositorySpec:
+            baseUrl: http://registry-internal.default.svc.cluster.local:5001
+            type: OCIRegistry
+          interval: 10m
+    - id: component
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Component
+        metadata:
+          name: kustomize-component-config
+        spec:
+          component: test-registry.com/test-org/test-component
+          repositoryRef:
+            name: ${ocmrepository.metadata.name}
+            namespace: default
+          semver: 1.0.0
+          interval: 10m
+    - id: ocmresource # resource is reserved by kro
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: kustomize-resource-config
+        spec:
+          componentRef:
+            name: ${component.metadata.name}
+          resource:
+            byReference:
+              resource:
+                name: kustomize-resource
+          interval: 10m
+    - id: ocirepository
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: configuration-kustomize-podinfo
+        spec:
+          interval: 1m0s
+          layerSelector:
+            mediaType: "application/vnd.oci.image.layer.v1.tar+gzip"
+            operation: copy
+          url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/${ocmresource.status.ociArtifact.repository}
+          ref:
+            digest: ${ocmresource.status.ociArtifact.digest}
+    - id: kustomization
+      template:
+        apiVersion: kustomize.toolkit.fluxcd.io/v1
+        kind: Kustomization
+        metadata:
+          name: kustomize-configuration-podinfo
+        spec:
+          interval: 1m
+          targetNamespace: default
+          prune: true
+          sourceRef:
+            kind: OCIRepository
+            name: ${ocirepository.metadata.name}
+            namespace: default
+          patches:
+            - patch:
+                ${schema.spec.kustomizePatch}
+              target:
+                kind: Deployment
+                name: kustomize-podinfo
+                namespace: default
+            - patch: |
+                - op: replace
+                  path: /metadata/name
+                  value:
+                    "hello-fabian"

@@ -1,0 +1,74 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-podinfo
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: SimpleDeployment
+  resources:
+    - id: ocmrepository
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: OCMRepository
+        metadata:
+          name: helm-ocmrepository
+        spec:
+          repositorySpec:
+            baseUrl: http://registry-internal.default.svc.cluster.local:5001
+            type: OCIRegistry
+          interval: 10m
+    - id: component
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Component
+        metadata:
+          name: helm-component
+        spec:
+          component: test-registry.com/test-org/test-component
+          repositoryRef:
+            name: ${ocmrepository.metadata.name}
+            namespace: default
+          semver: 1.0.0
+          interval: 10m
+    - id: ocmresource # resource is reserved by kro
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: helm-resource
+        spec:
+          componentRef:
+            name: ${component.metadata.name}
+          resource:
+            byReference:
+              resource:
+                name: helm-resource
+          interval: 10m
+    - id: ocirepository
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: helm-podinfo
+        spec:
+          interval: 1m0s
+          layerSelector:
+            mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+            operation: copy
+          url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/${ocmresource.status.ociArtifact.repository}
+          ref:
+            digest: ${ocmresource.status.ociArtifact.digest}
+    - id: helmrelease
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: helm-podinfo
+        spec:
+          interval: 1m
+          timeout: 5m
+          chartRef:
+            kind: OCIRepository
+            name: ${ocirepository.metadata.name}
+            namespace: default

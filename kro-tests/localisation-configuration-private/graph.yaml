@@ -1,0 +1,87 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: complicated-deployment
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: ComplicatedDeployment
+    spec:
+      podinfo:
+        releaseName: string
+        message: string | default="hello, world"
+  resources:
+    - id: resourceChart # resource is reserved by kro
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: static-resource-chart-name
+        spec:
+          componentRef:
+            name: static-component-name # should be referenced/passed
+          resource:
+            byReference:
+              resource:
+                name: helm-resource
+          interval: 10m
+    # TODO: Replace this with replication?
+    - id: resourceImage
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: static-resource-image-name
+        spec:
+          componentRef:
+            name: static-component-name # should be referenced/passed
+          resource:
+            byReference:
+              resource:
+                name: image
+          interval: 10m
+    - id: ocirepository
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: helm-podinfo-config
+        spec:
+          interval: 1m0s
+          layerSelector:
+            mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+            operation: copy
+          url: oci://ocm-k8s-toolkit-zot-registry.ocm-k8s-toolkit-system.svc.cluster.local:5000/${resourceChart.status.ociArtifact.repository}
+          ref:
+            digest: ${resourceChart.status.ociArtifact.digest}
+    - id: helmrelease
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: ${schema.spec.podinfo.releaseName}
+        spec:
+          releaseName: ${schema.spec.podinfo.releaseName}
+          interval: 1m
+          timeout: 5m
+          chartRef:
+            kind: OCIRepository
+            name: ${ocirepository.metadata.name}
+            namespace: default
+          values:
+            # Localisation
+            image:
+              repository: ${resourceImage.status.ociArtifact.sourceReference.registry}/${resourceImage.status.ociArtifact.sourceReference.repository}
+              tag: ${resourceImage.status.ociArtifact.sourceReference.reference}
+            # Configuration
+            ui:
+              message: ${schema.spec.podinfo.message}
+#    - id: secretSignature
+#      template:
+#        apiVersion: v1
+#        kind: Secret
+#        metadata:
+#          name: secret-signature
+#        data:
+#          # dw - secret is a only a local public key for test purposes
+#          acme-sig: "LS0tLS1CRUdJTiBSU0EgUFVCTElDIEtFWS0tLS0tCk1JSUJDZ0tDQVFFQTB2R0F4N3VqZ3BFdFBucXl0NnQxc3orMTNRZ05YYUhHV0dsbkdZMDQzT1dIZHk1TGt0eDEKWEZiRnlzOWl6VTN3TlFCR3NUZ0ZhaFkyK0hDMkNsRjJXaU5XSSsvakhQZ2RjRkhDQTJuYlVJVm1xYVpLekF0YgpYNWpxYVVaMmIwd2ptRmlnYXZmWnk2YnlvSGdKcUtqdURxNzFTTDV5YlF0cHpkNzhVQUdacUt1dHR0aFpyTnd3CkdPREttV1dadUlldnhhSVAzem5OVzZ0UkRCdTlqY0QvTDFkWHhlcHVXWklGOUpyakVDUDlENHNBamJsaFNpdlQKQ2haQjJJdE5FNjUxNGxKT0VoTXJJT2ozOE4rTkg3UzBMVjNDR2lBOUJUbEtUdlFuelcxVHd1d3BHd2lDTWN2ZApMYXZDS092blNPbTgxOWFQcEd0RWExSnpCM0Y3YU9URGd3SURBUUFCCi0tLS0tRU5EIFJTQSBQVUJMSUMgS0VZLS0tLS0K"

@@ -343,12 +343,30 @@ spec:
                       Manifest digest
                       Used to fetch single layer OCI artifact and remove manifests
                     type: string
+                  registry:
+                    description: OCI registry name
+                    type: string
                   repository:
                     description: OCI repository name
                     type: string
+                  sourceReference:
+                    description: OCI source reference
+                    properties:
+                      reference:
+                        type: string
+                      registry:
+                        type: string
+                      repository:
+                        type: string
+                    required:
+                    - reference
+                    - registry
+                    - repository
+                    type: object
                 required:
                 - blob
                 - digest
+                - registry
                 - repository
                 type: object
             type: object

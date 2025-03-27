@@ -266,7 +266,7 @@ var _ = Describe("Resource Controller", func() {
 				deleteResource(ctx, resource)
 			})
 
-			It("can reconcile a OCI artifact resource", func() {
+			FIt("can reconcile a OCI artifact resource", func() {
 				resourceType := artifacttypes.OCI_ARTIFACT
 
 				By("creating an OCI artifact")

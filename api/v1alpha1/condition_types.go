@@ -84,6 +84,9 @@ const (
 	// GetResourceAccessFailedReason is used when we fail in getting a resource access(es).
 	GetResourceAccessFailedReason = "GetResourceAccessFailed"
 
+	// GetOCIReferenceFailedReason is used when we fail to get an OCI reference.
+	GetOCIReferenceFailedReason = "GetOCIReferenceFailed"
+
 	// GetBlobAccessFailedReason is used when we fail to get a blob access.
 	GetBlobAccessFailedReason = "GetBlobAccessFailed"
 

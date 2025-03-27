@@ -17,6 +17,11 @@ limitations under the License.
 package main
 
 import (
+	krov1alpha1 "github.com/kro-run/kro/api/v1alpha1"
+
+	deliveryv1alpha1 "github.com/open-component-model/ocm-k8s-toolkit/api/v1alpha1"
+	"github.com/open-component-model/ocm-k8s-toolkit/internal/controller/ocmdeployer"
+
 	// +kubebuilder:scaffold:imports
 	"context"
 	"crypto/tls"
@@ -63,6 +68,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(deliveryv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(krov1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -261,6 +268,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&ocmdeployer.Reconciler{
+		BaseReconciler: &ocm.BaseReconciler{
+			Client:        mgr.GetClient(),
+			Scheme:        mgr.GetScheme(),
+			EventRecorder: eventsRecorder,
+		},
+		Registry: registry,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "OCMDeployer")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

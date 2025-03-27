@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"github.com/fluxcd/pkg/apis/meta"
-
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	ocmv1 "ocm.software/ocm/api/ocm/compdesc/meta/v1"
@@ -129,9 +128,16 @@ type BlobInfo struct {
 
 // OCIArtifactInfo contains information on how to locate an OCI Artifact.
 type OCIArtifactInfo struct {
+	// OCI registry name
+	// +required
+	Registry string `json:"registry"`
+
 	// OCI repository name
 	// +required
 	Repository string `json:"repository"`
+
+	// OCI source reference
+	SourceReference *OCISourceReference `json:"sourceReference,omitempty"`
 
 	// Manifest digest
 	// Used to fetch single layer OCI artifact and remove manifests
@@ -141,6 +147,12 @@ type OCIArtifactInfo struct {
 	// Blob
 	// +required
 	Blob *BlobInfo `json:"blob"`
+}
+
+type OCISourceReference struct {
+	Registry   string `json:"registry"`
+	Repository string `json:"repository"`
+	Reference  string `json:"reference"`
 }
 
 // +k8s:deepcopy-gen=false

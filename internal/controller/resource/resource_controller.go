@@ -30,10 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"ocm.software/ocm/api/datacontext"
 	"ocm.software/ocm/api/ocm/compdesc"
+	ocmociartifact "ocm.software/ocm/api/ocm/extensions/accessmethods/ociartifact"
 	"ocm.software/ocm/api/ocm/resolvers"
 	"ocm.software/ocm/api/ocm/selectors"
 	"ocm.software/ocm/api/ocm/tools/signing"
 	"ocm.software/ocm/api/utils/blobaccess"
+	"oras.land/oras-go/v2/registry"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -282,14 +284,14 @@ func (r *Reconciler) reconcileResource(ctx context.Context, octx ocmctx.Context,
 		return ctrl.Result{}, fmt.Errorf("failed to resolve resource reference: %w", err)
 	}
 
-	cv, err := getComponentVersion(ctx, octx, session, component.Status.Component.RepositorySpec.Raw, resourceCompDesc)
+	cv, err := GetComponentVersion(ctx, octx, session, component.Status.Component.RepositorySpec.Raw, resourceCompDesc)
 	if err != nil {
 		status.MarkNotReady(r.EventRecorder, resource, v1alpha1.GetComponentVersionFailedReason, err.Error())
 
 		return ctrl.Result{}, err
 	}
 
-	resourceAccess, err := getResourceAccess(ctx, cv, resourceDesc, resourceCompDesc)
+	resourceAccess, err := GetResourceAccess(ctx, cv, resourceDesc, resourceCompDesc)
 	if err != nil {
 		status.MarkNotReady(r.EventRecorder, resource, v1alpha1.GetResourceAccessFailedReason, err.Error())
 
@@ -355,14 +357,86 @@ func (r *Reconciler) reconcileResource(ctx context.Context, octx ocmctx.Context,
 	}
 
 	tag := resourceAccess.Meta().GetVersion()
+	sourceReference := &v1alpha1.OCISourceReference{}
 
-	if resourceAccessSpec.GetType() == "ociArtifact" {
+	ociResourceAccess, ok := resourceAccessSpec.(*ocmociartifact.AccessSpec)
+	if ok {
+		//imageReference, err := OCMOCIAccessSpec.GetOCIReference(cv)
+		//if err != nil {
+		//	status.MarkNotReady(r.EventRecorder, resource, v1alpha1.GetOCIReferenceFailedReason, err.Error())
+
+		//	return ctrl.Result{}, err
+		//}
+
+		//a := ocmociartifact.New(imageReference)
+		//b, err := a.AccessMethod(cv)
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+
+		//mImpl := accspeccpi.GetAccessMethodImplementation(b).(ocmociartifact.AccessMethodImpl)
+		//artifactSpec, artifactRef, err := mImpl.GetArtifact()
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+		//fmt.Println(artifactRef)
+
+		//baseUrl := "https://"
+		//if r.Registry.PlainHTTP {
+		//	baseUrl = "http://"
+		//}
+		//baseUrl += ociRepository.Reference.Registry
+
+		//ociSpec := ocireg.NewRepositorySpec(baseUrl)
+		////octx.CredentialsContext().GetCredentialsForConsumer(credentials.ConsumerIdentity{})
+		//aa, err := ociSpec.Repository(octx.OCIContext(), nil)
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+		//namespaceAccess, err := aa.LookupNamespace(ociRepositoryName)
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+
+		//if err := transfer.TransferArtifact(artifactSpec, namespaceAccess); err != nil {
+		//	status.MarkNotReady(r.EventRecorder, resource, v1alpha1.CopyOCIArtifactFailedReason, err.Error())
+
+		//	return ctrl.Result{}, err
+		//}
+
+		//artiAccNew, err := namespaceAccess.GetArtifact(resourceAccess.Meta().Version)
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+
+		//artDesc := artiAccNew.GetDescriptor()
+		//artManifest, err := artDesc.Manifest()
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
+
+		//manifestDigest = artManifest.Digest()
+
 		manifestDigest, err = ociRepository.CopyOCIArtifactForResourceAccess(ctx, resourceAccess)
 		if err != nil {
 			status.MarkNotReady(r.EventRecorder, resource, v1alpha1.CopyOCIArtifactFailedReason, err.Error())
 
 			return ctrl.Result{}, err
 		}
+
+		a, err := ociResourceAccess.GetOCIReference(cv)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		regReference, err := registry.ParseReference(a)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		sourceReference.Registry = regReference.Registry
+		sourceReference.Repository = regReference.Repository
+		sourceReference.Reference = regReference.Reference
 
 		// TODO: How to get the blob size, without downloading the resource?
 		//  Do we need the blob-size, when we copy the resource either way?
@@ -371,7 +445,7 @@ func (r *Reconciler) reconcileResource(ctx context.Context, octx ocmctx.Context,
 	} else {
 		// Get resource content
 		// No need to close the blob access as it will be closed automatically
-		blobAccess, err := getBlobAccess(ctx, resourceAccess)
+		blobAccess, err := GetBlobAccess(ctx, resourceAccess)
 		if err != nil {
 			status.MarkNotReady(r.EventRecorder, resource, v1alpha1.GetBlobAccessFailedReason, err.Error())
 
@@ -414,8 +488,10 @@ func (r *Reconciler) reconcileResource(ctx context.Context, octx ocmctx.Context,
 
 	// Update status
 	if err = setResourceStatus(ctx, configs, resource, resourceAccess, &v1alpha1.OCIArtifactInfo{
-		Repository: ociRepositoryName,
-		Digest:     manifestDigest.String(),
+		Registry:        r.Registry.Reference.Registry,
+		Repository:      ociRepositoryName,
+		SourceReference: sourceReference,
+		Digest:          manifestDigest.String(),
 		Blob: &v1alpha1.BlobInfo{
 			Digest: resourceAccess.Meta().Digest.Value,
 			Tag:    tag,
@@ -434,7 +510,7 @@ func (r *Reconciler) reconcileResource(ctx context.Context, octx ocmctx.Context,
 }
 
 // getComponentVersion returns the component version for the given component descriptor.
-func getComponentVersion(ctx context.Context, octx ocmctx.Context, session ocmctx.Session, spec []byte, compDesc *compdesc.ComponentDescriptor) (
+func GetComponentVersion(ctx context.Context, octx ocmctx.Context, session ocmctx.Session, spec []byte, compDesc *compdesc.ComponentDescriptor) (
 	ocmctx.ComponentVersionAccess, error,
 ) {
 	log.FromContext(ctx).V(1).Info("getting component version")
@@ -461,7 +537,7 @@ func getComponentVersion(ctx context.Context, octx ocmctx.Context, session ocmct
 }
 
 // getResourceAccess returns the resource access for the given resource and component descriptor from the component version access.
-func getResourceAccess(ctx context.Context, cv ocmctx.ComponentVersionAccess, resourceDesc *compdesc.Resource, compDesc *compdesc.ComponentDescriptor) (ocmctx.ResourceAccess, error) {
+func GetResourceAccess(ctx context.Context, cv ocmctx.ComponentVersionAccess, resourceDesc *compdesc.Resource, compDesc *compdesc.ComponentDescriptor) (ocmctx.ResourceAccess, error) {
 	log.FromContext(ctx).V(1).Info("get resource access")
 
 	resAccesses, err := cv.SelectResources(selectors.Identity(resourceDesc.GetIdentity(compDesc.GetResources())))
@@ -483,7 +559,7 @@ func getResourceAccess(ctx context.Context, cv ocmctx.ComponentVersionAccess, re
 }
 
 // getBlobAccess returns the blob access for the given resource access.
-func getBlobAccess(ctx context.Context, access ocmctx.ResourceAccess) (blobaccess.BlobAccess, error) {
+func GetBlobAccess(ctx context.Context, access ocmctx.ResourceAccess) (blobaccess.BlobAccess, error) {
 	log.FromContext(ctx).V(1).Info("get resource blob access")
 
 	// Create data access
@@ -512,7 +588,7 @@ func verifyResource(ctx context.Context, access ocmctx.ResourceAccess, cv ocmctx
 		return nil
 	}
 
-	blobAccess, err := getBlobAccess(ctx, access)
+	blobAccess, err := GetBlobAccess(ctx, access)
 	if err != nil {
 		return err
 	}
