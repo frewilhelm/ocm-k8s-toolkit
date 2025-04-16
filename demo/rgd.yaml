@@ -1,0 +1,86 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: demo-rgd
+spec:
+  schema:
+    apiVersion: v1alpha1
+    # CRD that gets created
+    kind: DemoInstance
+    # Values that can configured using Kro instance (configuration)
+    spec:
+      podinfo:
+        message: string | default="hello world"
+  resources:
+    - id: resourceChart
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: demo-helm-chart
+        spec:
+          componentRef:
+            name: static-component-name
+          resource:
+            byReference:
+              resource:
+                name: helm-resource
+          interval: 10m
+    # Kro resource that is used to do localisation
+    #    type SourceReference struct {
+    #      Registry   string `json:"registry"`
+    #      Repository string `json:"repository"`
+    #      Reference  string `json:"reference"`
+    #}
+    - id: resourceImage
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: demo-image
+        spec:
+          componentRef:
+            name: static-component-name
+          resource:
+            byReference:
+              resource:
+                name: image-resource
+          interval: 10m
+    # Any deploy can be used. In this case we are using FluxCD HelmRelease that references FluxCD OCIRepository
+    - id: ocirepository
+      template:
+        apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: OCIRepository
+        metadata:
+          name: demo-oci-repository
+        spec:
+          interval: 1m0s
+          layerSelector:
+            mediaType: "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
+            operation: copy
+          # Use values from the resource "resourceChart"
+          url: oci://${resourceChart.status.reference.registry}/${resourceChart.status.reference.repository}
+          ref:
+            tag: ${resourceChart.status.reference.reference}
+    - id: helmrelease
+      template:
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: demo-helm-release-no-update
+        spec:
+          releaseName: demo-podinfo
+          interval: 1m
+          timeout: 5m
+          chartRef:
+            kind: OCIRepository
+            name: ${ocirepository.metadata.name}
+            namespace: default
+          values:
+            # Localisation (image location is adjusted to its location through OCM transfer)
+            image:
+              repository: ${resourceImage.status.reference.registry}/${resourceImage.status.reference.repository}
+              tag: ${resourceImage.status.reference.reference}
+            # Configuration (passed through Kro instance)
+            ui:
+              message: ${schema.spec.podinfo.message}
