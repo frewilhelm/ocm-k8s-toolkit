@@ -5,10 +5,10 @@ flux install
 
 helm install kro oci://ghcr.io/kro-run/kro/kro --namespace kro --create-namespace --version=0.2.2
 
-# OCM
-ocm add cv --create --file ./demo/ctf ./demo/component-constructor.yaml
-# IMPORTANT!!! Adjust OCM repository in bootstrap
-ocm transfer ctf --copy-resources --overwrite ./demo/ctf ghcr.io/frewilhelm
+## OCM
+#ocm add cv --create --file ./demo/ctf ./demo/component-constructor.yaml
+## IMPORTANT!!! Adjust OCM repository in bootstrap
+#ocm transfer ctf --copy-resources --overwrite ./demo/ctf ghcr.io/frewilhelm
 
 # Start controllers
 IMG=ghcr.io/frewilhelm/ocm-controllers make deploy
