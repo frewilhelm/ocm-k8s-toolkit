@@ -6,7 +6,7 @@ spec:
   schema:
     apiVersion: v1alpha1
     # CRD that gets created
-    kind: DemoInstance
+    kind: DemoKustomizeInstance
     # Values that can configured using Kro instance (configuration)
     spec:
       podinfo:
