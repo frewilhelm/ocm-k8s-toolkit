@@ -3,7 +3,7 @@ kind create cluster
 
 flux install
 
-helm install kro oci://ghcr.io/kro-run/kro/kro --namespace kro --create-namespace --version=0.2.2
+helm install kro oci://ghcr.io/kro-run/kro/kro --namespace kro --create-namespace --version=0.2.3
 
 ## OCM
 #ocm add cv --create --file ./demo/ctf ./demo/component-constructor.yaml
