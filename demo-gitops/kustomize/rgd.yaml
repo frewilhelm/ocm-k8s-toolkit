@@ -1,12 +1,12 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: demo-kustomize-rgd
+  name: demo-gitops-rgd
 spec:
   schema:
     apiVersion: v1alpha1
     # CRD that gets created
-    kind: DemoKustomizeInstance
+    kind: DemoGitops
     # Values that can configured using Kro instance (configuration)
     spec:
       podinfo:
@@ -17,7 +17,7 @@ spec:
         apiVersion: delivery.ocm.software/v1alpha1
         kind: OCMRepository
         metadata:
-          name: kustomize-demo-repository
+          name: demo-gitops-repository
         spec:
           repositorySpec:
             baseUrl: ghcr.io/frewilhelm
@@ -28,9 +28,9 @@ spec:
         apiVersion: delivery.ocm.software/v1alpha1
         kind: Component
         metadata:
-          name: kustomize-demo-component
+          name: demo-gitops-component
         spec:
-          component: ocm.software/ocm-k8s-toolkit/demo-kustomize
+          component: ocm.software/ocm-k8s-toolkit/demo-gitops
           repositoryRef:
             name: ${ocmrepository.metadata.name}
           semver: 1.0.0

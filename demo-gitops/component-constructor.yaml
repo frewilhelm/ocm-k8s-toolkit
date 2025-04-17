@@ -1,5 +1,5 @@
 components:
-  - name: ocm.software/ocm-k8s-toolkit/demo-kustomize
+  - name: ocm.software/ocm-k8s-toolkit/demo-gitops
     version: "1.0.0"
     provider:
       name: ocm.software
