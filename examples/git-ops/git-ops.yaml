@@ -1,0 +1,42 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: wait-for-crd-creation
+spec:
+  interval: 5m0s
+  url: https://github.com/frewilhelm/ocm-k8s-toolkit
+  ref:
+    branch: testKustomizeDepends
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: wait-for-crd-creation
+spec:
+  interval: 5m
+  path: ./examples/git-ops/bootstrap
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: wait-crd-creation
+  timeout: 1m
+  wait: true # Tells the controller to wait for all resources to be ready by performing health checks.
+  healthCheckExprs:
+    - apiVersion: kro.run/v1alpha1
+      kind: HelmSimple
+      failed: status.conditions.filter(e, e.type == 'Established').all(e, e.status == 'True')
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: instance
+spec:
+  dependsOn:
+    - name: wait-for-crd-creation
+  interval: 5m
+  path: ./examples/git-ops/instance
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: wait-crd-creation
+  timeout: 1m
