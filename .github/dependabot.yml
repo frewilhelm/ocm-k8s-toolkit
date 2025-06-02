@@ -17,9 +17,6 @@ updates:
       - component/github-actions
   - package-ecosystem: "gomod"
     directory: "/"
-    groups:
-      go:
-        update-types:  ["minor","patch"]
     schedule:
       interval: "weekly"
       day: "sunday"
