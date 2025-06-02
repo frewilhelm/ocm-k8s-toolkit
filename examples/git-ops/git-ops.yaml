@@ -16,21 +16,23 @@ spec:
   interval: 5m
   path: ./examples/git-ops/bootstrap
   prune: true
+  targetNamespace: default
   sourceRef:
     kind: GitRepository
-    name: wait-crd-creation
+    name: wait-for-crd-creation
   timeout: 1m
   wait: true # Tells the controller to wait for all resources to be ready by performing health checks.
   healthCheckExprs:
     - apiVersion: kro.run/v1alpha1
       kind: HelmSimple
-      failed: status.conditions.filter(e, e.type == 'Established').all(e, e.status == 'True')
+      current: status.conditions.filter(e, e.type == 'Established').all(e, e.status == 'True')
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: instance
 spec:
+  targetNamespace: default
   dependsOn:
     - name: wait-for-crd-creation
   interval: 5m
@@ -38,5 +40,5 @@ spec:
   prune: true
   sourceRef:
     kind: GitRepository
-    name: wait-crd-creation
+    name: wait-for-crd-creation
   timeout: 1m
